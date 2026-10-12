@@ -111,12 +111,16 @@ Windows does not download ffmpeg for you. Pausing a job uses `taskkill` to stop 
 
 Do not copy `node_modules` from a Mac to Windows. Run `npm install` again in the project directory on the other system.
 
-## Start
+## Download and start
 
 ```bash
+git clone https://github.com/knowledgefxg/Transyt.git
+cd Transyt
 npm install
 npm run dev
 ```
+
+You can also download the ZIP from the GitHub repository, unzip it, and run the last two commands in that folder. The repository does not include `node_modules`, videos, or API keys.
 
 Open [http://localhost:3000](http://localhost:3000).
 

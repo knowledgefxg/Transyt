@@ -109,12 +109,16 @@ Windows 上不会自动下载 ffmpeg。暂停任务时，会用 `taskkill` 结�
 
 不要把 Mac 上的 `node_modules` 拷到 Windows。换系统后在项目目录重新执行 `npm install`。
 
-## 启动
+## 下载并启动
 
 ```bash
+git clone https://github.com/knowledgefxg/Transyt.git
+cd Transyt
 npm install
 npm run dev
 ```
+
+也可以在 GitHub 仓库页面下载 ZIP。
 
 浏览器打开 [http://localhost:3000](http://localhost:3000)。
 
