@@ -66,14 +66,19 @@ export function runCommand(
       reject(new PauseError());
       return;
     }
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      PYTHONUNBUFFERED: "1",
+      HF_HOME: path.join(process.cwd(), "data", "models"),
+    };
+    // MLX 和 yt-dlp 的子进程用裸命令调用 ffmpeg，也需要能找到项目内的安装。
+    // Windows 的环境变量名不区分大小写，沿用现有 PATH 键，避免 PATH/Path 重复。
+    const pathKey = Object.keys(env).find((key) => windows ? key.toLowerCase() === "path" : key === "PATH") || "PATH";
+    env[pathKey] = [binDir, env[pathKey]].filter(Boolean).join(path.delimiter);
     const child = spawn(command, args, {
       detached: true,
       windowsHide: true,
-      env: {
-        ...process.env,
-        PYTHONUNBUFFERED: "1",
-        HF_HOME: path.join(process.cwd(), "data", "models"),
-      },
+      env,
     });
     if (jobId) attachProcess(jobId, child);
     let stdout = "";

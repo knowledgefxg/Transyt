@@ -206,6 +206,12 @@ pip install faster-whisper yt-dlp
 
 ## 开发
 
+### 转写时报 `FileNotFoundError: ... 'ffmpeg'`
+
+MLX 转写库读取音频时会通过 PATH 再调用一次 `ffmpeg`。旧版本只在提取音频时使用 `data/bin/ffmpeg` 的完整路径，没有把这个目录传给 Python，所以可能出现工具检查通过、音频提取成功，但转写失败。
+
+更新项目并重启服务后，项目会把 `data/bin` 加入子进程的 PATH。若还没有安装 ffmpeg，先点击「一键安装」。旧版本的 Mac 用户也可以执行 `brew install ffmpeg`，确认启动服务的终端里 `ffmpeg -version` 能运行，再重启服务、重新提交任务。这个报错表示找不到 ffmpeg 可执行文件，不是 Python 3.13 本身的版本错误。
+
 断句检查：
 
 ```bash

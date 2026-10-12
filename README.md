@@ -209,6 +209,12 @@ pip install faster-whisper yt-dlp
 
 ## Development
 
+### `FileNotFoundError: ... 'ffmpeg'` during transcription
+
+MLX invokes `ffmpeg` through PATH when reading audio. Older versions used the full `data/bin/ffmpeg` path for audio extraction but did not add that directory to Python's PATH, so tool checks and extraction could succeed while transcription failed.
+
+Update the project and restart the server. The project now adds `data/bin` to child processes' PATH. If ffmpeg has not been installed, use the one-click installer first. On older versions, Mac users can also run `brew install ffmpeg`, check that `ffmpeg -version` works in the terminal used to start the server, then restart and submit the job again. This error means the ffmpeg executable was not found; it does not by itself indicate a Python 3.13 compatibility problem.
+
 Check subtitle segmentation:
 
 ```bash
