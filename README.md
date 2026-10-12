@@ -18,16 +18,93 @@ Transcription runs locally with Whisper. The audio is not sent anywhere else. Tr
 
 Only one job runs at a time. Later submissions wait in a queue. If the dev server or the production process restarts, a running job is interrupted. Once transcription has written `cues.json`, you can continue with translation and burning.
 
-## What one job does
+## Install these yourself
 
-1. **Download or import.** YouTube videos are downloaded with `yt-dlp`. Local files are stored as they are. If a proxy is needed, the download uses the proxy set under Translation API.
-2. **Extract audio.** ffmpeg pulls the audio track for transcription.
-3. **Transcribe.** Local Whisper produces a timestamped transcript. The precise model is about 1.5GB on first download. The fast model is smaller. Source language can be auto-detect, English, Japanese, Korean, French, Spanish, German, or Chinese.
-4. **Translate.** For a non-Chinese video, each subtitle line is translated into Chinese, 12 lines per request, with up to 3 requests in flight. A detected Chinese source skips translation and uses the original text as Chinese. If you chose English-only subtitles but the source is Chinese, there is no English to burn, so the job falls back to Chinese only.
-5. **Burn.** With “burn into the video” and a picture track, ffmpeg with libass burns the subtitles in. “Transcript only”, or a file with no picture, skips this step.
-6. **Transcript.** Writes a Chinese Markdown transcript. When the source is not Chinese, it also keeps a source transcript.
+The **一键安装** button on the page does not install any of the following. Get them ready before you clone the project:
 
-Chinese lines drop trailing punctuation and stay on one line. Bilingual cues place one language above the other and share the same timestamps.
+| You need | Why |
+| --- | --- |
+| Node.js 18.18 or newer | For `npm install` and `npm run dev` |
+| Python 3.9 or newer | `python3` or `python` on PATH. 3.11 or 3.12 is recommended. The button only uses it to create a project virtual environment. It does not install Python for you |
+| The Windows VC++ runtime | Without it, `faster-whisper` may install and then fail to load. Install the [Microsoft Visual C++ 2015–2022 Redistributable (x64)](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) |
+| ffmpeg on Linux, or on Windows that is not 64-bit | Those systems have no ready download. Install a full ffmpeg build that includes libass |
+
+On Windows, install Python from [python.org](https://www.python.org/downloads/) and tick **Add python.exe to PATH**. Do not copy `node_modules` from a Mac to Windows. Run `npm install` again in the project directory on the other system.
+
+## Download and start
+
+```bash
+git clone https://github.com/knowledgefxg/Transyt.git
+cd Transyt
+npm install
+npm run dev
+```
+
+You can also download the ZIP from the GitHub repository, unzip it, and run the last two commands in that folder. The repository does not include `node_modules`, videos, or API keys.
+
+Open [http://localhost:3000](http://localhost:3000).
+
+For production:
+
+```bash
+npm run build
+npm start
+```
+
+## One-click install
+
+After you open the app, the home page lists anything else that is missing. Click **一键安装**. It installs only what is missing, into the project `data/` folder, and leaves the system Python alone.
+
+![The home page banner lists missing tools, with a one-click install button on the right](docs/setup.jpg)
+
+| Path | What it installs |
+| --- | --- |
+| `data/venv` | `faster-whisper` and `yt-dlp`. On Apple silicon it also tries `mlx-whisper`, then keeps using `faster-whisper` if that fails |
+| `data/bin` | ffmpeg and ffprobe with libass, on Mac and 64-bit Windows |
+
+Python packages go into a project virtual environment, so Homebrew’s PEP 668 error does not apply. Already-installed tools are left as they are. The app uses a project-local copy when it exists, otherwise the command on `PATH`.
+
+| Command | Use |
+| --- | --- |
+| `ffmpeg`, `ffprobe` | Extract audio and burn subtitles. ffmpeg must include libass |
+| `yt-dlp` | Download YouTube videos |
+| `python3` or `python` | Create the project environment and run transcription |
+
+The log under that banner shows what is being installed. If it fails, the page keeps the error and a retry button. Typical causes are a missing or too-old Python, no network to the package index, a full disk, or a missing VC++ runtime on Windows.
+
+The first transcription also downloads a Whisper model (about 1.5GB for the precise model) into `data/models`. That happens when a job runs, not when you click the install button.
+
+You can still install the same tools yourself. See Install by hand at the end.
+
+## Translation API
+
+Translation API, at the top right, stores one configuration shared by subtitle translation and vocabulary extraction. It is written to `data/settings.json`. The app is not tied to one provider. Any service with an OpenAI-compatible Chat Completions API works, including official APIs, gateways, and a local compatible server.
+
+![Translation API: base URL, model name, API key, and download proxy](docs/settings.png)
+
+Requests are `POST` with an `Authorization: Bearer <key>` header and a body that includes `model`, `temperature: 0.2`, and `messages`. Subtitle translation asks the model to return JSON, one item per source line. Vocabulary extraction uses the same settings to pick words, phrases, collocations, idioms, slang, and usage from the source.
+
+### The four fields
+
+| Field | How to fill it |
+| --- | --- |
+| Base URL | The API root from the provider’s docs, usually ending in `/v1`, such as `https://api.openai.com/v1`. The app appends `/chat/completions`. If the docs already give a full `.../chat/completions` URL, paste that as-is and it will not be appended twice |
+| Model | The model ID available at that URL, such as `gpt-4o-mini`, `deepseek-chat`, or `qwen-plus`. Do not put the API key here |
+| API key | The key issued by the provider. After a key is saved, leaving this box empty and saving again keeps the old key. The page never shows the key back. If an `sk-` key is entered in the model field by mistake, saving moves it into the key field. When the base URL contains DeepSeek, the model becomes `deepseek-chat`; otherwise it becomes `gpt-4o-mini` |
+| Download proxy | Used only for YouTube downloads. Leave it empty if you do not need one. Translation requests do not use this proxy. A typical value is `http://127.0.0.1:7890` |
+
+The base URL, model, and key have to succeed together as one chat request. When you change providers, change all three. Changing only the model and keeping the old URL often returns 404 or “model not found”.
+
+If you start a job before a key is saved, the transcript is kept. After you add a key, translation and burning can continue. Vocabulary extraction in study mode uses this same configuration.
+
+The rows below are common examples, not a support list. Follow the docs for the service you use:
+
+| Service | Base URL | Example model |
+| --- | --- | --- |
+| OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` |
+| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
+| Qwen (compatible mode) | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-plus` |
+| Local server or gateway | The root URL from its docs | A model ID that service lists |
 
 ## Interface
 
@@ -67,119 +144,16 @@ Saved items in project management collect sentences and words from every video. 
 - **Folders.** Create and delete folders. Deleting a folder sends its projects back to uncategorized.
 - Opening a project returns to the home page. Deleting a project also deletes its downloaded video and subtitles. If the same YouTube video was processed more than once, those runs are removed together.
 
-## Requirements
+## What one job does
 
-### Install these yourself
+1. **Download or import.** YouTube videos are downloaded with `yt-dlp`. Local files are stored as they are. If a proxy is needed, the download uses the proxy set under Translation API.
+2. **Extract audio.** ffmpeg pulls the audio track for transcription.
+3. **Transcribe.** Local Whisper produces a timestamped transcript. The precise model is about 1.5GB on first download. The fast model is smaller. Source language can be auto-detect, English, Japanese, Korean, French, Spanish, German, or Chinese.
+4. **Translate.** For a non-Chinese video, each subtitle line is translated into Chinese, 12 lines per request, with up to 3 requests in flight. A detected Chinese source skips translation and uses the original text as Chinese. If you chose English-only subtitles but the source is Chinese, there is no English to burn, so the job falls back to Chinese only.
+5. **Burn.** With “burn into the video” and a picture track, ffmpeg with libass burns the subtitles in. “Transcript only”, or a file with no picture, skips this step.
+6. **Transcript.** Writes a Chinese Markdown transcript. When the source is not Chinese, it also keeps a source transcript.
 
-The page button does not install any of the following:
-
-| You need | Why |
-| --- | --- |
-| Node.js 18.18 or newer | For `npm install` and `npm run dev` |
-| Python 3.9 or newer | `python3` or `python` on PATH. 3.11 or 3.12 is recommended. The button only uses it to create a project virtual environment. It does not install Python for you |
-| A translation API | Fill in the base URL, model, and key at the top right |
-| System fonts | Burned subtitles use PingFang on a Mac and Microsoft YaHei on Windows |
-| The Windows VC++ runtime | Without it, `faster-whisper` may install and then fail to load. Install the [Microsoft Visual C++ 2015–2022 Redistributable (x64)](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) |
-| ffmpeg on Linux, or on Windows that is not 64-bit | Those systems have no ready download. Install a full ffmpeg build that includes libass |
-
-The first transcription also downloads a Whisper model (about 1.5GB for the precise model) into `data/models`. That happens when a job runs, not when you click the install button.
-
-On Windows, install Python from [python.org](https://www.python.org/downloads/) and tick **Add python.exe to PATH**. Do not copy `node_modules` from a Mac to Windows. Run `npm install` again in the project directory on the other system. Pausing a job uses `taskkill` to stop the transcription or burn process.
-
-### What one-click install adds
-
-After you open the app, the home page lists anything else that is missing. Click **一键安装**. It installs only what is missing, into the project `data/` folder, and leaves the system Python alone:
-
-| Path | What it installs |
-| --- | --- |
-| `data/venv` | `faster-whisper` and `yt-dlp`. On Apple silicon it also tries `mlx-whisper`, then keeps using `faster-whisper` if that fails |
-| `data/bin` | ffmpeg and ffprobe with libass, on Mac and 64-bit Windows |
-
-Python packages go into a project virtual environment, so Homebrew’s PEP 668 error does not apply. Already-installed tools are left as they are. The app uses a project-local copy when it exists, otherwise the command on `PATH`.
-
-| Command | Use |
-| --- | --- |
-| `ffmpeg`, `ffprobe` | Extract audio and burn subtitles. ffmpeg must include libass |
-| `yt-dlp` | Download YouTube videos |
-| `python3` or `python` | Create the project environment and run transcription |
-
-The log under that banner shows what is being installed. If it fails, the page keeps the error and a retry button. Typical causes are a missing or too-old Python, no network to the package index, a full disk, or a missing VC++ runtime on Windows.
-
-### Install by hand if you prefer
-
-If you are not using the page button, install one transcription library. MLX is used when it is already installed:
-
-| System | Library | Precise model | Fast model |
-| --- | --- | --- | --- |
-| Apple silicon Mac | `mlx-whisper` | `mlx-community/whisper-large-v3-turbo` | `mlx-community/whisper-medium-mlx` |
-| Windows, and other machines without MLX | `faster-whisper` | `large-v3-turbo` | `medium` |
-
-The two model downloads are not interchangeable. Switching machines or engines downloads the model again.
-
-Mac:
-
-```bash
-brew install ffmpeg yt-dlp
-pip3 install mlx-whisper
-```
-
-Windows, with the tools on `PATH`:
-
-```bash
-pip install faster-whisper yt-dlp
-```
-
-## Download and start
-
-```bash
-git clone https://github.com/knowledgefxg/Transyt.git
-cd Transyt
-npm install
-npm run dev
-```
-
-You can also download the ZIP from the GitHub repository, unzip it, and run the last two commands in that folder. The repository does not include `node_modules`, videos, or API keys.
-
-Open [http://localhost:3000](http://localhost:3000).
-
-Cloning the project and starting the dev server are still manual. If the top of the page says ffmpeg, yt-dlp, or Whisper is missing, click **一键安装**.
-
-For production:
-
-```bash
-npm run build
-npm start
-```
-
-## Translation API
-
-Translation API, at the top right, stores one configuration shared by subtitle translation and vocabulary extraction. It is written to `data/settings.json`. The app is not tied to one provider. Any service with an OpenAI-compatible Chat Completions API works, including official APIs, gateways, and a local compatible server.
-
-![Translation API: base URL, model name, API key, and download proxy](docs/settings.png)
-
-Requests are `POST` with an `Authorization: Bearer <key>` header and a body that includes `model`, `temperature: 0.2`, and `messages`. Subtitle translation asks the model to return JSON, one item per source line. Vocabulary extraction uses the same settings to pick words, phrases, collocations, idioms, slang, and usage from the source.
-
-### The four fields
-
-| Field | How to fill it |
-| --- | --- |
-| Base URL | The API root from the provider’s docs, usually ending in `/v1`, such as `https://api.openai.com/v1`. The app appends `/chat/completions`. If the docs already give a full `.../chat/completions` URL, paste that as-is and it will not be appended twice |
-| Model | The model ID available at that URL, such as `gpt-4o-mini`, `deepseek-chat`, or `qwen-plus`. Do not put the API key here |
-| API key | The key issued by the provider. After a key is saved, leaving this box empty and saving again keeps the old key. The page never shows the key back. If an `sk-` key is entered in the model field by mistake, saving moves it into the key field. When the base URL contains DeepSeek, the model becomes `deepseek-chat`; otherwise it becomes `gpt-4o-mini` |
-| Download proxy | Used only for YouTube downloads. Leave it empty if you do not need one. Translation requests do not use this proxy. A typical value is `http://127.0.0.1:7890` |
-
-The base URL, model, and key have to succeed together as one chat request. When you change providers, change all three. Changing only the model and keeping the old URL often returns 404 or “model not found”.
-
-If you start a job before a key is saved, the transcript is kept. After you add a key, translation and burning can continue. Vocabulary extraction in study mode uses this same configuration.
-
-The rows below are common examples, not a support list. Follow the docs for the service you use:
-
-| Service | Base URL | Example model |
-| --- | --- | --- |
-| OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` |
-| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
-| Qwen (compatible mode) | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-plus` |
-| Local server or gateway | The root URL from its docs | A model ID that service lists |
+Chinese lines drop trailing punctuation and stay on one line. Bilingual cues place one language above the other and share the same timestamps.
 
 ## Output
 
@@ -203,11 +177,35 @@ The finished video, subtitles, and transcripts can be downloaded from the home p
 
 ## Pause, failure, and resume
 
-You can pause while a job is running. Pausing stops the current download, transcription, or burn.
+You can pause while a job is running. Pausing stops the current download, transcription, or burn. On Windows this uses `taskkill`.
 
 If translation fails partway, or a restart interrupts the job after transcription has finished, the page offers to continue translation and burning. Lines that are already translated are kept. Missing lines are requested again.
 
 A job that is still running cannot be deleted. Wait until it finishes or pause it first.
+
+## Install by hand if you prefer
+
+If you are not using the page button, install one transcription library. MLX is used when it is already installed:
+
+| System | Library | Precise model | Fast model |
+| --- | --- | --- | --- |
+| Apple silicon Mac | `mlx-whisper` | `mlx-community/whisper-large-v3-turbo` | `mlx-community/whisper-medium-mlx` |
+| Windows, and other machines without MLX | `faster-whisper` | `large-v3-turbo` | `medium` |
+
+The two model downloads are not interchangeable. Switching machines or engines downloads the model again.
+
+Mac:
+
+```bash
+brew install ffmpeg yt-dlp
+pip3 install mlx-whisper
+```
+
+Windows, with the tools on `PATH`:
+
+```bash
+pip install faster-whisper yt-dlp
+```
 
 ## Development
 
