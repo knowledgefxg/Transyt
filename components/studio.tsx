@@ -18,6 +18,14 @@ const fileLabels: Record<string, string> = {
   "video.mp4": "原视频",
 };
 
+type SetupState = {
+  status: "idle" | "running" | "done" | "error";
+  step: string;
+  error: string;
+  hint: string;
+  log: string[];
+};
+
 function displayTitle(item: JobRecord): string {
   const title = item.title.trim();
   const junk = !title || title.startsWith("http") || /strongly recommended|latest version|yt-dlp/i.test(title);
@@ -110,6 +118,7 @@ const languages = [
 
 export default function Studio() {
   const [health, setHealth] = useState<Health | null>(null);
+  const [setup, setSetup] = useState<SetupState | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const backdropPressed = useRef(false);
   const [settings, setSettings] = useState<PublicSettings | null>(null);
@@ -351,9 +360,37 @@ export default function Studio() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  async function loadHealth() {
+    const response = await fetch("/api/health");
+    if (response.ok) setHealth(await response.json());
+  }
+
+  async function startSetup() {
+    const response = await fetch("/api/setup", { method: "POST" });
+    if (response.ok) setSetup(await response.json());
+  }
+
   useEffect(() => {
-    void fetch("/api/health").then(async (response) => {
-      if (response.ok) setHealth(await response.json());
+    if (setup?.status !== "running") return;
+    const timer = window.setTimeout(async () => {
+      const response = await fetch("/api/setup").catch(() => null);
+      if (!response?.ok) {
+        setSetup((current) => (current ? { ...current } : current));
+        return;
+      }
+      const next = (await response.json()) as SetupState;
+      setSetup(next);
+      if (next.status === "done") void loadHealth();
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [setup]);
+
+  useEffect(() => {
+    void loadHealth();
+    void fetch("/api/setup").then(async (response) => {
+      if (!response.ok) return;
+      const data = (await response.json()) as SetupState;
+      if (data.status === "running" || data.status === "error") setSetup(data);
     });
     void fetch("/api/settings").then(async (response) => {
       if (!response.ok) return;
@@ -775,8 +812,36 @@ async function submit(event: React.FormEvent) {
         </div>
       </header>
 
-      {missing.length > 0 && (
-        <div className="banner">这台电脑还缺 {missing.join("、")}，装好之后刷新页面。</div>
+      {(missing.length > 0 || setup?.status === "running" || setup?.status === "error") && (
+        <div className="banner setup-banner">
+          <div className="setup-row">
+            <p>
+              {setup?.status === "running"
+                ? `正在安装：${setup.step}。装好后这条提示会自动消失。`
+                : setup?.status === "error"
+                  ? `${setup.error} ${setup.hint}`
+                  : setup?.status === "done"
+                    ? "装好了，正在确认。"
+                    : `这台电脑还缺 ${missing.join("、")}。一键安装会把它们装进项目的 data 文件夹，系统环境保持原样。`}
+            </p>
+            {missing.length > 0 && setup?.status !== "done" && (
+              <button
+                type="button"
+                className="primary"
+                disabled={setup?.status === "running"}
+                onClick={() => void startSetup()}
+              >
+                {setup?.status === "running" ? "安装中…" : setup?.status === "error" ? "重试" : "一键安装"}
+              </button>
+            )}
+          </div>
+          {setup && setup.log.length > 0 && (
+            <details>
+              <summary>安装日志</summary>
+              <pre>{setup.log.slice(-80).join("\n")}</pre>
+            </details>
+          )}
+        </div>
       )}
 
       {libraryOpen ? (

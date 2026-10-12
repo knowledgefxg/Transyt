@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
-import { probeMedia, runCommand, escapeFilterValue, ensureBurnFfmpeg, pythonCommand } from "./media";
+import { probeMedia, runCommand, escapeFilterValue, ensureBurnFfmpeg, pythonCommand, tool } from "./media";
 import { readSettings } from "./settings";
 import { mergeWordsToSegments, type RawSegment } from "./segment";
 import { jobDir, readJob, updateJob } from "./store";
@@ -150,7 +150,7 @@ async function prepare(id: string) {
   } else {
     stopIfPaused(id);
     await setStage(id, "audio", "active", "正在提取音频");
-    await runCommand("ffmpeg", ["-y", "-i", video, "-vn", "-acodec", "libmp3lame", "-q:a", "2", audio], undefined, id);
+    await runCommand(tool("ffmpeg"), ["-y", "-i", video, "-vn", "-acodec", "libmp3lame", "-q:a", "2", audio], undefined, id);
     await setStage(id, "audio", "done");
   }
 
@@ -230,12 +230,12 @@ async function importUpload(id: string): Promise<string> {
     if (/time=|Duration:/.test(line)) void setStage(id, "download", "active", line.slice(0, 80));
   };
   try {
-    await runCommand("ffmpeg", ["-y", "-i", source, "-c", "copy", "-movflags", "+faststart", videoPath], note, id);
+    await runCommand(tool("ffmpeg"), ["-y", "-i", source, "-c", "copy", "-movflags", "+faststart", videoPath], note, id);
   } catch (error) {
     if (error instanceof PauseError) throw error;
     await fs.rm(videoPath, { force: true });
     await runCommand(
-      "ffmpeg",
+      tool("ffmpeg"),
       ["-y", "-i", source, "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-c:a", "aac", "-movflags", "+faststart", videoPath],
       note,
       id,
@@ -266,7 +266,7 @@ async function downloadVideo(id: string, url: string): Promise<string> {
 
   const attempt = async (extra: string[]) => {
     let title = "";
-    await runCommand("yt-dlp", [...args, ...extra, url], (line) => {
+    await runCommand(tool("yt-dlp"), [...args, ...extra, url], (line) => {
       const notice = /WARNING|ERROR|Deprecated|strongly recommended|yt-dlp/i.test(line);
       if (!notice && !line.startsWith("[") && line.length > 0 && line.length < 180) title = line;
       if (line.startsWith("[download]") || line.startsWith("[Merger]")) {
@@ -312,7 +312,7 @@ async function finalizeDownload(dir: string, output: string, id: string): Promis
   const picture = streams.find((name) => /\.(mp4|mkv|webm)$/i.test(name));
   const audio = streams.find((name) => name !== picture);
   if (picture && audio) {
-    await runCommand("ffmpeg", [
+    await runCommand(tool("ffmpeg"), [
       "-y",
       "-i",
       path.join(dir, picture),

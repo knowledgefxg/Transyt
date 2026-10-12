@@ -67,17 +67,45 @@
 
 ## 环境
 
-需要 Node.js 18.18 或更新版本。
+### 一键安装之外，要自己准备
 
-两边都要能在终端里调用这些命令：
+这些不会被页面按钮装上：
+
+| 要准备的 | 说明 |
+| --- | --- |
+| Node.js 18.18 或更新 | 用来 `npm install`、`npm run dev` |
+| Python 3.9 或更新 | 终端里能调用 `python3` 或 `python`。建议 3.11 或 3.12。按钮只用它在项目里建虚拟环境，不会替你装 Python |
+| 翻译接口 | 右上角自己填地址、模型名和密钥 |
+| 系统字体 | 烧字幕时，Mac 用苹方，Windows 用微软雅黑 |
+| Windows 的 VC++ 运行库 | 没有的话，`faster-whisper` 可能装好了但加载失败。安装 [Microsoft Visual C++ 2015–2022 Redistributable（x64）](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) |
+| Linux，或非 64 位 Windows 上的 ffmpeg | 这些系统没有现成下载包，要自己装带 libass 的 ffmpeg |
+
+第一次转写时还会下载 Whisper 模型（精确模型大约 1.5GB），放进 `data/models`。这是跑任务时发生的，不是点安装按钮时下载。
+
+Windows 从 [python.org](https://www.python.org/downloads/) 安装时，勾选 **Add python.exe to PATH**。不要把 Mac 上的 `node_modules` 拷到 Windows，换系统后在项目目录重新执行 `npm install`。暂停任务时，Windows 会用 `taskkill` 结束转写或烧录进程。
+
+### 一键安装会装的
+
+打开页面后，缺的工具列在顶部。点 **一键安装**，缺什么装什么，都放进项目的 `data/`，不动系统 Python：
+
+| 路径 | 装什么 |
+| --- | --- |
+| `data/venv` | `faster-whisper` 和 `yt-dlp`。苹果芯片还会尝试 `mlx-whisper`，失败就继续用 `faster-whisper` |
+| `data/bin` | 带 libass 的 ffmpeg 和 ffprobe，适用于 Mac 和 64 位 Windows |
+
+Python 包装进项目虚拟环境，不会碰到 Homebrew 的 PEP 668 报错。已经有的不会重装。项目里有一份就用项目里的，没有再用 PATH 里的命令。
 
 | 命令 | 用途 |
 | --- | --- |
 | `ffmpeg`、`ffprobe` | 抽音频、烧字幕。ffmpeg 需要带 libass |
 | `yt-dlp` | 下载 YouTube |
-| `python3` 或 `python` | 跑转写脚本。先找 `python3`，没有再用 `python` |
+| `python3` 或 `python` | 建项目环境、跑转写 |
 
-转写库二选一。已经安装 MLX 时优先用它：
+横幅下的日志会显示正在装什么。失败时页面保留原因和重试按钮。常见原因是没装 Python、版本太旧、连不上软件源、磁盘不够，或 Windows 缺少 VC++ 运行库。
+
+### 想自己装也可以
+
+不使用页面按钮时，转写库二选一。已经安装 MLX 时优先用它：
 
 | 系统 | 库 | 精确模型 | 快速模型 |
 | --- | --- | --- | --- |
@@ -86,28 +114,18 @@
 
 两套模型文件不能共用。换电脑或换引擎会重新下载。
 
-字幕字体在 Mac 上使用苹方，在 Windows 上使用微软雅黑。
-
-### Mac
+Mac：
 
 ```bash
 brew install ffmpeg yt-dlp
 pip3 install mlx-whisper
 ```
 
-如果当前 ffmpeg 不能烧字幕，苹果芯片的 Mac 会自动下载一份带 libass 的 ffmpeg，放到 `data/bin/`。
-
-### Windows
-
-安装 Python，以及带 libass 的完整版 ffmpeg（同时提供 `ffmpeg` 和 `ffprobe`）、`yt-dlp`，并确认它们都在 PATH 里。然后：
+Windows，工具放进 PATH：
 
 ```bash
-pip install faster-whisper
+pip install faster-whisper yt-dlp
 ```
-
-Windows 上不会自动下载 ffmpeg。暂停任务时，会用 `taskkill` 结束转写或烧录进程。
-
-不要把 Mac 上的 `node_modules` 拷到 Windows。换系统后在项目目录重新执行 `npm install`。
 
 ## 下载并启动
 
@@ -122,7 +140,7 @@ npm run dev
 
 浏览器打开 [http://localhost:3000](http://localhost:3000)。
 
-页面顶部若提示缺少 ffmpeg、yt-dlp 或 Whisper，装好对应工具后刷新。
+下载项目和启动开发服务要自己做。页面顶部若提示缺少 ffmpeg、yt-dlp 或 Whisper，再点 **一键安装**。
 
 构建后用生产模式运行：
 

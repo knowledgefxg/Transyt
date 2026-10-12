@@ -69,17 +69,45 @@ Saved items in project management collect sentences and words from every video. 
 
 ## Requirements
 
-Node.js 18.18 or newer.
+### Install these yourself
 
-These commands need to be available in the terminal on either system:
+The page button does not install any of the following:
+
+| You need | Why |
+| --- | --- |
+| Node.js 18.18 or newer | For `npm install` and `npm run dev` |
+| Python 3.9 or newer | `python3` or `python` on PATH. 3.11 or 3.12 is recommended. The button only uses it to create a project virtual environment. It does not install Python for you |
+| A translation API | Fill in the base URL, model, and key at the top right |
+| System fonts | Burned subtitles use PingFang on a Mac and Microsoft YaHei on Windows |
+| The Windows VC++ runtime | Without it, `faster-whisper` may install and then fail to load. Install the [Microsoft Visual C++ 2015–2022 Redistributable (x64)](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) |
+| ffmpeg on Linux, or on Windows that is not 64-bit | Those systems have no ready download. Install a full ffmpeg build that includes libass |
+
+The first transcription also downloads a Whisper model (about 1.5GB for the precise model) into `data/models`. That happens when a job runs, not when you click the install button.
+
+On Windows, install Python from [python.org](https://www.python.org/downloads/) and tick **Add python.exe to PATH**. Do not copy `node_modules` from a Mac to Windows. Run `npm install` again in the project directory on the other system. Pausing a job uses `taskkill` to stop the transcription or burn process.
+
+### What one-click install adds
+
+After you open the app, the home page lists anything else that is missing. Click **一键安装**. It installs only what is missing, into the project `data/` folder, and leaves the system Python alone:
+
+| Path | What it installs |
+| --- | --- |
+| `data/venv` | `faster-whisper` and `yt-dlp`. On Apple silicon it also tries `mlx-whisper`, then keeps using `faster-whisper` if that fails |
+| `data/bin` | ffmpeg and ffprobe with libass, on Mac and 64-bit Windows |
+
+Python packages go into a project virtual environment, so Homebrew’s PEP 668 error does not apply. Already-installed tools are left as they are. The app uses a project-local copy when it exists, otherwise the command on `PATH`.
 
 | Command | Use |
 | --- | --- |
 | `ffmpeg`, `ffprobe` | Extract audio and burn subtitles. ffmpeg must include libass |
 | `yt-dlp` | Download YouTube videos |
-| `python3` or `python` | Run the transcription script. `python3` is tried first, then `python` |
+| `python3` or `python` | Create the project environment and run transcription |
 
-Install one transcription library. MLX is used when it is already installed:
+The log under that banner shows what is being installed. If it fails, the page keeps the error and a retry button. Typical causes are a missing or too-old Python, no network to the package index, a full disk, or a missing VC++ runtime on Windows.
+
+### Install by hand if you prefer
+
+If you are not using the page button, install one transcription library. MLX is used when it is already installed:
 
 | System | Library | Precise model | Fast model |
 | --- | --- | --- | --- |
@@ -88,28 +116,18 @@ Install one transcription library. MLX is used when it is already installed:
 
 The two model downloads are not interchangeable. Switching machines or engines downloads the model again.
 
-Burned subtitles use PingFang on macOS and Microsoft YaHei on Windows.
-
-### Mac
+Mac:
 
 ```bash
 brew install ffmpeg yt-dlp
 pip3 install mlx-whisper
 ```
 
-If the installed ffmpeg cannot burn subtitles, an Apple silicon Mac downloads a libass-enabled ffmpeg into `data/bin/`.
-
-### Windows
-
-Install Python, a full ffmpeg build that includes libass (both `ffmpeg` and `ffprobe`), and `yt-dlp`. Make sure they are on `PATH`. Then:
+Windows, with the tools on `PATH`:
 
 ```bash
-pip install faster-whisper
+pip install faster-whisper yt-dlp
 ```
-
-Windows does not download ffmpeg for you. Pausing a job uses `taskkill` to stop the transcription or burn process.
-
-Do not copy `node_modules` from a Mac to Windows. Run `npm install` again in the project directory on the other system.
 
 ## Download and start
 
@@ -124,7 +142,7 @@ You can also download the ZIP from the GitHub repository, unzip it, and run the 
 
 Open [http://localhost:3000](http://localhost:3000).
 
-If the top of the page says ffmpeg, yt-dlp, or Whisper is missing, install that tool and refresh.
+Cloning the project and starting the dev server are still manual. If the top of the page says ffmpeg, yt-dlp, or Whisper is missing, click **一键安装**.
 
 For production:
 

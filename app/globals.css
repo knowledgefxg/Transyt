@@ -530,6 +530,25 @@ input:focus, select:focus, textarea:focus { border-color: #e1a08e; }
   border: 1px solid #f0dfc0;
 }
 
+.setup-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.setup-row p { margin: 0; flex: 1; line-height: 1.5; }
+.setup-row button { flex: none; width: auto; margin-top: 0; white-space: nowrap; }
+.setup-banner details { margin-top: 10px; color: var(--muted); }
+.setup-banner summary { cursor: pointer; font-size: 13px; }
+.setup-banner pre {
+  max-height: 220px;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  overflow: auto;
+  border-radius: 10px;
+  background: var(--bg-deep);
+  color: #e7dece;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
 .stages { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
 
 .stage {

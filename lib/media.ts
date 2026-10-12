@@ -5,17 +5,46 @@ import path from "path";
 import zlib from "zlib";
 import { PauseError, attachProcess, detachProcess, isPauseRequested } from "./control";
 
-let pythonName: Promise<string> | null = null;
+const windows = process.platform === "win32";
+export const binDir = path.join(process.cwd(), "data", "bin");
+export const venvDir = path.join(process.cwd(), "data", "venv");
 
-export function pythonCommand(): Promise<string> {
-  if (!pythonName) {
-    pythonName = (async () => {
-      if (await commandExists("python3", ["--version"])) return "python3";
-      if (await commandExists("python", ["--version"])) return "python";
-      return process.platform === "win32" ? "python" : "python3";
-    })();
+export const venvPython = path.join(venvDir, windows ? "Scripts/python.exe" : "bin/python");
+
+/** 项目里装过的工具优先，其次用系统 PATH 里的。 */
+export function tool(name: "ffmpeg" | "ffprobe" | "yt-dlp"): string {
+  const file = windows ? `${name}.exe` : name;
+  const local =
+    name === "yt-dlp" ? path.join(venvDir, windows ? "Scripts" : "bin", file) : path.join(binDir, file);
+  return fs.existsSync(local) ? local : name;
+}
+
+/** 系统自带的 Python，用来建项目虚拟环境。 */
+export async function systemPython(): Promise<string | null> {
+  for (const name of ["python3", "python"]) {
+    if (await commandExists(name, ["--version"])) return name;
   }
-  return pythonName;
+  return null;
+}
+
+function hasWhisper(python: string): Promise<boolean> {
+  return commandExists(python, [
+    "-c",
+    "import importlib.util as u; raise SystemExit(0 if u.find_spec('mlx_whisper') or u.find_spec('faster_whisper') else 1)",
+  ]);
+}
+
+/** 找一个装了转写库的 Python：项目虚拟环境优先。 */
+export async function whisperPython(): Promise<string | null> {
+  const candidates = fs.existsSync(venvPython) ? [venvPython, "python3", "python"] : ["python3", "python"];
+  for (const python of candidates) {
+    if (await hasWhisper(python)) return python;
+  }
+  return null;
+}
+
+export async function pythonCommand(): Promise<string> {
+  return (await whisperPython()) || (await systemPython()) || (windows ? "python" : "python3");
 }
 
 export function commandExists(command: string, args: string[] = ["-version"]): Promise<boolean> {
@@ -40,7 +69,11 @@ export function runCommand(
     const child = spawn(command, args, {
       detached: true,
       windowsHide: true,
-      env: { ...process.env, PYTHONUNBUFFERED: "1" },
+      env: {
+        ...process.env,
+        PYTHONUNBUFFERED: "1",
+        HF_HOME: path.join(process.cwd(), "data", "models"),
+      },
     });
     if (jobId) attachProcess(jobId, child);
     let stdout = "";
@@ -95,7 +128,7 @@ export type Probe = {
 };
 
 export async function probeMedia(file: string): Promise<Probe> {
-  const { stdout } = await runCommand("ffprobe", [
+  const { stdout } = await runCommand(tool("ffprobe"), [
     "-v",
     "error",
     "-print_format",
@@ -127,11 +160,33 @@ export function escapeFilterValue(value: string): string {
     .replace(/ /g, "\\ ");
 }
 
-const burnBinary = path.join(process.cwd(), "data", "bin", "ffmpeg");
-const burnDownload =
-  "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-arm64.gz";
+const staticPlatforms: Record<string, string> = {
+  "darwin-arm64": "darwin-arm64",
+  "darwin-x64": "darwin-x64",
+  "win32-x64": "win32-x64",
+};
 
-async function supportsAss(bin: string): Promise<boolean> {
+export function canDownloadFfmpeg(): boolean {
+  return Boolean(staticPlatforms[`${process.platform}-${process.arch}`]);
+}
+
+/** 下载已验证带 libass 的静态构建，放进 data/bin。 */
+export async function downloadFfmpeg(name: "ffmpeg" | "ffprobe"): Promise<string> {
+  const target = staticPlatforms[`${process.platform}-${process.arch}`];
+  if (!target) throw new Error("这个系统没有现成的 ffmpeg 下载包");
+  const url = `https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/${name}-${target}.gz`;
+  const file = path.join(binDir, windows ? `${name}.exe` : name);
+  await fsp.mkdir(binDir, { recursive: true });
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`下载 ${name} 失败（${response.status}）`);
+  const temp = `${file}.download`;
+  await fsp.writeFile(temp, zlib.gunzipSync(Buffer.from(await response.arrayBuffer())));
+  await fsp.chmod(temp, 0o755);
+  await fsp.rename(temp, file);
+  return file;
+}
+
+export async function supportsAss(bin: string): Promise<boolean> {
   try {
     const { stdout } = await runCommand(bin, ["-hide_banner", "-filters"]);
     return /\bass\b/.test(stdout);
@@ -140,24 +195,12 @@ async function supportsAss(bin: string): Promise<boolean> {
   }
 }
 
-/** 烧字幕需要 libass。Mac 上系统 ffmpeg 没有时，下载一份已验证过的静态构建。 */
+/** 烧字幕需要 libass。现有 ffmpeg 都不支持时，下载一份静态构建。 */
 export async function ensureBurnFfmpeg(onStatus?: (line: string) => void): Promise<string> {
-  if (await supportsAss("ffmpeg")) return "ffmpeg";
-  if (fs.existsSync(burnBinary) && (await supportsAss(burnBinary))) return burnBinary;
-  if (process.platform !== "darwin" || process.arch !== "arm64") {
-    const hint =
-      process.platform === "win32"
-        ? "请安装带 libass 的完整版 ffmpeg，并确认 ffmpeg 在 PATH 里。"
-        : "请安装带 libass 的 ffmpeg 后再试。";
-    throw new Error(`当前 ffmpeg 不能烧字幕。${hint}`);
+  for (const bin of new Set([tool("ffmpeg"), "ffmpeg"])) {
+    if (await supportsAss(bin)) return bin;
   }
+  if (!canDownloadFfmpeg()) throw new Error("当前 ffmpeg 不能烧字幕。请安装带 libass 的 ffmpeg 后再试。");
   onStatus?.("正在下载带字幕功能的 ffmpeg");
-  await fsp.mkdir(path.dirname(burnBinary), { recursive: true });
-  const response = await fetch(burnDownload);
-  if (!response.ok) throw new Error("下载烧录组件失败");
-  const temp = `${burnBinary}.download`;
-  await fsp.writeFile(temp, zlib.gunzipSync(Buffer.from(await response.arrayBuffer())));
-  await fsp.chmod(temp, 0o755);
-  await fsp.rename(temp, burnBinary);
-  return burnBinary;
+  return downloadFfmpeg("ffmpeg");
 }
