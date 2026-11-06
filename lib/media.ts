@@ -4,7 +4,7 @@ import fsp from "fs/promises";
 import path from "path";
 import zlib from "zlib";
 import { PauseError, attachProcess, detachProcess, isPauseRequested } from "./control";
-import { dataMount } from "./paths";
+import { bundledVenvPython, bundledYtDlp, dataMount } from "./paths";
 
 const windows = process.platform === "win32";
 export const binDir = path.join(dataMount, "bin");
@@ -12,11 +12,17 @@ export const venvDir = path.join(dataMount, "venv");
 
 export const venvPython = path.join(venvDir, windows ? "Scripts/python.exe" : "bin/python");
 
-/** 项目里装过的工具优先，其次用系统 PATH 里的。 */
+/** 项目里装过的工具优先，其次镜像预装 venv，再用系统 PATH。 */
 export function tool(name: "ffmpeg" | "ffprobe" | "yt-dlp"): string {
   const file = windows ? `${name}.exe` : name;
-  const local =
-    name === "yt-dlp" ? path.join(venvDir, windows ? "Scripts" : "bin", file) : path.join(binDir, file);
+  if (name === "yt-dlp") {
+    const projectLocal = path.join(venvDir, windows ? "Scripts" : "bin", file);
+    if (fs.existsSync(projectLocal)) return projectLocal;
+    const prebuilt = bundledYtDlp();
+    if (prebuilt) return prebuilt;
+    return name;
+  }
+  const local = path.join(binDir, file);
   return fs.existsSync(local) ? local : name;
 }
 
@@ -35,9 +41,13 @@ function hasWhisper(python: string): Promise<boolean> {
   ]);
 }
 
-/** 找一个装了转写库的 Python：项目虚拟环境优先。 */
+/** 找一个装了转写库的 Python：镜像预装 venv → 项目 data/venv → 系统。 */
 export async function whisperPython(): Promise<string | null> {
-  const candidates = fs.existsSync(venvPython) ? [venvPython, "python3", "python"] : ["python3", "python"];
+  const candidates: string[] = [];
+  const bundled = bundledVenvPython();
+  if (bundled) candidates.push(bundled);
+  if (fs.existsSync(venvPython)) candidates.push(venvPython);
+  candidates.push("python3", "python");
   for (const python of candidates) {
     if (await hasWhisper(python)) return python;
   }

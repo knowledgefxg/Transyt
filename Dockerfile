@@ -23,7 +23,12 @@ RUN apt-get update \
     python3 \
     python3-venv \
     ffmpeg \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/* \
+  && python3 -m venv /opt/transyt-venv \
+  && /opt/transyt-venv/bin/pip install --no-cache-dir --upgrade pip \
+  && /opt/transyt-venv/bin/pip install --no-cache-dir faster-whisper yt-dlp
+
+ENV TRANSYT_BUNDLED_VENV=/opt/transyt-venv
 
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev

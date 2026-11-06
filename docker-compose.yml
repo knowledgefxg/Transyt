@@ -5,6 +5,7 @@ services:
       - "3000:3000"
     environment:
       TRANSYT_DATA_ROOT: /data
+      TRANSYT_BUNDLED_VENV: /opt/transyt-venv
     volumes:
       - transyt-data:/data
 

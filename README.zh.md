@@ -52,7 +52,9 @@ npm start
 
 ## Docker
 
-镜像基于 Debian（`node:20-bookworm-slim`），镜像内已装 `ffmpeg`、`python3`、`python3-venv`。**Linux 容器里没有 MLX**，转写请用 **`faster-whisper`**（首页 **一键安装**，或提前在数据卷里准备好 `venv`）。
+镜像基于 Debian（`node:20-bookworm-slim`），已装 `ffmpeg`、`python3`、`python3-venv`。构建时还会在 **`/opt/transyt-venv`** 里装好 **`faster-whisper`** 和 **`yt-dlp`**，通过环境变量 **`TRANSYT_BUNDLED_VENV`**（Dockerfile 与 `docker-compose.yml` 里已设）让应用优先使用，因此 Docker 里一般 **不用再点一键安装** 来装转写和下载 YouTube。
+
+**Linux 容器里没有 MLX**，转写只用 **`faster-whisper`**。
 
 ```bash
 docker compose up --build -d
@@ -70,9 +72,10 @@ docker compose up --build -d
 
 | 变量 | 含义 |
 | --- | --- |
-| `TRANSYT_DATA_ROOT` | 任务、设置、`venv`、模型、下载的二进制都放在这里。镜像里默认为 `/data`。 |
+| `TRANSYT_DATA_ROOT` | 任务、设置、用户一键安装出的 `venv`、模型、额外二进制都放在这里。镜像里默认为 `/data`。 |
+| `TRANSYT_BUNDLED_VENV` | 镜像预装的 Python 环境路径，默认 `/opt/transyt-venv`。 |
 
-容器起来后，若仍提示缺 Whisper 或 `yt-dlp`，在页面上点 **一键安装**。精确模型第一次下载体积大，请保证卷所在磁盘空间足够。
+翻译仍要在页面里 **填写翻译接口**（密钥与地址）。第一次跑精确模型会下载到 `<数据>/models`，体积大，请保证卷所在磁盘空间足够。
 
 GPU：默认 compose 未挂载 NVIDIA 设备，转写走 CPU；若要 GPU，需自行扩展镜像与 compose。
 

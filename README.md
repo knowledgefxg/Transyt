@@ -53,7 +53,9 @@ npm start
 
 ## Docker
 
-The image is Debian-based (`node:20-bookworm-slim`) with `ffmpeg`, `python3`, and `python3-venv`. Workflow and data paths still work like a normal install. **MLX does not run inside a Linux container**, so use **`faster-whisper`** (install it from the home page, or pre-build a `venv` under your data volume).
+The image is Debian-based (`node:20-bookworm-slim`) with `ffmpeg`, `python3`, and `python3-venv`. At build time it also creates **`/opt/transyt-venv`** and installs **`faster-whisper`** and **`yt-dlp`** there. The app picks that up via **`TRANSYT_BUNDLED_VENV`** (set in the Dockerfile and `docker-compose.yml`), so you normally **do not need one-click install** for Whisper or `yt-dlp` inside Docker.
+
+**MLX does not run inside a Linux container**; transcription uses **`faster-whisper`** only.
 
 ```bash
 docker compose up --build -d
@@ -72,9 +74,10 @@ Environment:
 
 | Variable | Meaning |
 | --- | --- |
-| `TRANSYT_DATA_ROOT` | Where jobs, settings, `venv`, models, and downloaded binaries live. Default in the image is `/data`. |
+| `TRANSYT_DATA_ROOT` | Where jobs, settings, optional user `venv`, models, and any extra binaries live. Default in the image is `/data`. |
+| `TRANSYT_BUNDLED_VENV` | Path to the pre-built venv with Whisper and `yt-dlp`. Default is `/opt/transyt-venv`. |
 
-After the container starts, open the app and use **一键安装** if the banner still asks for Whisper or `yt-dlp`. The first precise model download is large; keep the volume on a disk with enough space.
+You still need to **save your translation API** in the app (or it will not translate). The first precise model download is large and goes under `<data>/models`; keep the volume on a disk with enough space.
 
 GPU note: the default setup does not pass NVIDIA devices into the container. Transcription uses CPU unless you extend the image and compose file yourself.
 
