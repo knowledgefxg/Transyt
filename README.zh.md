@@ -56,12 +56,60 @@ npm start
 
 **Linux 容器里没有 MLX**，转写只用 **`faster-whisper`**。
 
+### 前置条件
+
+- 已安装 **Docker Desktop**（Mac / Windows）或 **Docker Engine** 与 **Compose 插件**（Linux）。
+- 仓库 clone 到本机，终端 **进入项目根目录**（与 `docker-compose.yml` 同级）。
+
+### 怎么启动
+
+**后台运行（推荐）**：终端关掉后容器仍继续跑。
+
 ```bash
+cd /path/to/Transyt
 docker compose up --build -d
 # 或：npm run docker:up
 ```
 
-浏览器打开 [http://localhost:3000](http://localhost:3000)。默认用命名卷挂载到容器内的 `/data`。若希望数据落在本机某个目录，可把 `docker-compose.yml` 里的卷改成：
+**前台运行**：终端里持续打日志，**按 Ctrl+C 会停掉容器**。
+
+```bash
+docker compose up --build
+```
+
+国内网络构建失败时，可把 `docker-compose.cn.yml` 叠加上去：
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.cn.yml up --build -d
+# 或：npm run docker:up:cn
+```
+
+首次执行会 **构建镜像并装依赖**，可能要几分钟。完成后用浏览器打开 [http://localhost:3000](http://localhost:3000)。
+
+### 怎么查看日志
+
+```bash
+docker compose logs -f transyt
+```
+
+### 怎么停掉 / 退出
+
+| 你想做的 | 命令 |
+| --- | --- |
+| 停掉容器，**数据保留**（命名卷或本机目录仍在） | `docker compose stop` |
+| 删掉容器，**数据卷仍保留**（下次 `up` 任务和设置还在） | `docker compose down` |
+| 删掉容器并 **清空数据卷**（任务、设置、`/data` 下内容没了） | `docker compose down -v`（慎用） |
+| 镜像已有、只重新拉起来 | `docker compose up -d` |
+
+说明：`down` 不会删除镜像；要删本地构建的镜像可用 `docker image rm <镜像名>` 或 `docker builder prune`。
+
+### 端口
+
+默认把本机 **3000** 映射到容器里的 3000。若端口被占用，编辑 `docker-compose.yml` 的 `ports`，例如改成 `"8080:3000"`，然后访问 `http://localhost:8080`。
+
+---
+
+默认用命名卷挂载到容器内的 `/data`。若希望数据落在本机某个目录，可把 `docker-compose.yml` 里的卷改成：
 
 ```yaml
     volumes:

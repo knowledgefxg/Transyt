@@ -57,12 +57,60 @@ The image is Debian-based (`node:20-bookworm-slim`) with `ffmpeg`, `python3`, an
 
 **MLX does not run inside a Linux container**; transcription uses **`faster-whisper`** only.
 
+### Prerequisites
+
+- **Docker Desktop** (Mac / Windows) or **Docker Engine** with the **Compose plugin** (Linux).
+- Clone the repo and `cd` to the **project root** (where `docker-compose.yml` lives).
+
+### How to start
+
+**Detached (recommended)** — keeps running after you close the terminal:
+
 ```bash
+cd /path/to/Transyt
 docker compose up --build -d
 # or: npm run docker:up
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Compose mounts a named volume at `/data`. To use a host folder instead:
+**Foreground** — logs stream in the terminal; **Ctrl+C stops the container**:
+
+```bash
+docker compose up --build
+```
+
+On slow or blocked networks, stack the China mirror overlay:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.cn.yml up --build -d
+# or: npm run docker:up:cn
+```
+
+The first run **builds the image** and may take several minutes. Then open [http://localhost:3000](http://localhost:3000).
+
+### Logs
+
+```bash
+docker compose logs -f transyt
+```
+
+### Stop and exit
+
+| Goal | Command |
+| --- | --- |
+| Stop containers, **keep data** | `docker compose stop` |
+| Remove containers, **keep volumes** (jobs and settings survive the next `up`) | `docker compose down` |
+| Remove containers **and** named volumes (**wipes `/data` in the stack** — use with care) | `docker compose down -v` |
+| Start again without rebuilding | `docker compose up -d` |
+
+`down` does not remove images; use `docker image rm` or `docker builder prune` if you need to reclaim disk.
+
+### Port
+
+By default host **3000** maps to container port 3000. If it is taken, change `ports` in `docker-compose.yml` (e.g. `"8080:3000"`) and open `http://localhost:8080`.
+
+---
+
+Compose mounts a named volume at `/data`. To use a host folder instead:
 
 ```yaml
 # docker-compose.yml — replace the volumes block with:
