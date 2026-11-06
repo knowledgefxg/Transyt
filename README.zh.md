@@ -79,6 +79,33 @@ docker compose up --build -d
 
 GPU：默认 compose 未挂载 NVIDIA 设备，转写走 CPU；若要 GPU，需自行扩展镜像与 compose。
 
+### 构建失败：连不上 Debian 或 Docker Hub
+
+常见日志：
+
+- **`Unable to connect to deb.debian.org`**，解析出的 IP 是 **`198.18.0.59`** 这类地址：多见于 VPN/代理的 **fake-ip** DNS，解析成了假地址，容器里实际连不上真正的 Debian 源。**关掉 fake-ip**，或给 Docker 配稳定 DNS（如 Docker Desktop → Settings → Docker Engine 里加 `"dns": ["8.8.8.8"]`），或改用下面的国内镜像构建参数。
+- **`registry-1.docker.io` 超时**：本机拉不到 `node` 基础镜像。需要在 Docker Desktop 里配置可用的 **HTTP/HTTPS 代理**，或使用 **Docker 镜像加速**（大陆网络常见）。
+
+**可选：国内镜像构建**（仅在 `docker build` 阶段把 Debian / pip / npm 源换成镜像站）：
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.cn.yml up --build -d
+# 或：npm run docker:up:cn
+```
+
+也可手动传参：
+
+```bash
+docker build -t transyt \
+  --build-arg APT_MIRROR=http://mirrors.aliyun.com/debian \
+  --build-arg APT_SECURITY_MIRROR=http://mirrors.aliyun.com/debian-security \
+  --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
+  --build-arg NPM_REGISTRY=https://registry.npmmirror.com \
+  .
+```
+
+**前提**：本机仍能执行一次 `docker pull node:20-bookworm-slim`。若这一步就失败，先把 Docker Hub 访问问题解决（代理或镜像站）。
+
 ## 一键安装
 
 打开页面后，缺的工具会列在顶部。点 **一键安装**，缺什么装什么，都放进 `TRANSYT_DATA_ROOT`（默认是项目下的 `data/`，Docker 里一般是 `/data`），不动系统 Python。

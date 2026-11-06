@@ -8,7 +8,8 @@
     "start": "next start",
     "test:segment": "node --experimental-strip-types scripts/segment-check.ts",
     "docker:build": "docker build -t transyt .",
-    "docker:up": "docker compose up --build -d"
+    "docker:up": "docker compose up --build -d",
+    "docker:up:cn": "docker compose -f docker-compose.yml -f docker-compose.cn.yml up --build -d"
   },
   "dependencies": {
     "next": "^15.5.4",

@@ -81,6 +81,33 @@ You still need to **save your translation API** in the app (or it will not trans
 
 GPU note: the default setup does not pass NVIDIA devices into the container. Transcription uses CPU unless you extend the image and compose file yourself.
 
+### Build fails: cannot reach Debian or Docker Hub
+
+Typical log lines:
+
+- `Unable to connect to deb.debian.org` with an IP like **`198.18.0.59`**: that range is often used by VPN/proxy **fake-ip** DNS. The container cannot actually reach the real mirror. **Turn off fake-ip** for Docker builds, or point Docker’s DNS to something stable (e.g. `8.8.8.8` in Docker Desktop → Settings → Docker Engine → `dns`), or use a mirror (below).
+- `failed to resolve source metadata for docker.io/library/node` / **timeout to `registry-1.docker.io`**: your machine cannot pull the base image. Configure a working **HTTP/HTTPS proxy** in Docker Desktop, or use a **registry mirror** (common on networks in mainland China).
+
+**Optional China-friendly build** (switch Debian + pip + npm registries during `docker build` only):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.cn.yml up --build -d
+# or: npm run docker:up:cn
+```
+
+Or pass build args manually, for example:
+
+```bash
+docker build -t transyt \
+  --build-arg APT_MIRROR=http://mirrors.aliyun.com/debian \
+  --build-arg APT_SECURITY_MIRROR=http://mirrors.aliyun.com/debian-security \
+  --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
+  --build-arg NPM_REGISTRY=https://registry.npmmirror.com \
+  .
+```
+
+You still need to be able to **`docker pull node:20-bookworm-slim`** once; if that fails, fix Docker Hub access first (VPN, proxy, or mirror).
+
 ## One-click install
 
 After you open the app, the home page lists anything else that is missing. Click **一键安装**. It installs only what is missing under `TRANSYT_DATA_ROOT` (default `./data` on the host, `/data` in Docker), and leaves the system Python alone.

@@ -1,0 +1,12 @@
+# 可选叠加文件：国内网络下 apt / pip 更易成功（需本机仍能拉取 node 基础镜像，见 README）
+# 使用：docker compose -f docker-compose.yml -f docker-compose.cn.yml up --build -d
+services:
+  transyt:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APT_MIRROR: http://mirrors.aliyun.com/debian
+        APT_SECURITY_MIRROR: http://mirrors.aliyun.com/debian-security
+        PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
+        NPM_REGISTRY: https://registry.npmmirror.com
