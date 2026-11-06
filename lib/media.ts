@@ -4,10 +4,11 @@ import fsp from "fs/promises";
 import path from "path";
 import zlib from "zlib";
 import { PauseError, attachProcess, detachProcess, isPauseRequested } from "./control";
+import { dataMount } from "./paths";
 
 const windows = process.platform === "win32";
-export const binDir = path.join(process.cwd(), "data", "bin");
-export const venvDir = path.join(process.cwd(), "data", "venv");
+export const binDir = path.join(dataMount, "bin");
+export const venvDir = path.join(dataMount, "venv");
 
 export const venvPython = path.join(venvDir, windows ? "Scripts/python.exe" : "bin/python");
 
@@ -69,7 +70,7 @@ export function runCommand(
     const env: NodeJS.ProcessEnv = {
       ...process.env,
       PYTHONUNBUFFERED: "1",
-      HF_HOME: path.join(process.cwd(), "data", "models"),
+      HF_HOME: path.join(dataMount, "models"),
     };
     // MLX 和 yt-dlp 的子进程用裸命令调用 ffmpeg，也需要能找到项目内的安装。
     // Windows 的环境变量名不区分大小写，沿用现有 PATH 键，避免 PATH/Path 重复。

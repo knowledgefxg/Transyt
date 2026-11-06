@@ -4,7 +4,7 @@
 
 Turn a YouTube video or a local file into a subtitled video on your own computer, and keep the Chinese and English subtitles, transcripts, and vocabulary so you can study with the picture.
 
-Transcription runs locally with Whisper. The audio is not sent anywhere else. Translation uses the API you configure. Jobs, videos, and API keys stay in the local `data/` directory, which is listed in `.gitignore`.
+Transcription runs locally with Whisper. The audio is not sent anywhere else. Translation uses the API you configure. Jobs, videos, and API keys stay under `data/` by default, or under `TRANSYT_DATA_ROOT` when set (for example `/data` in Docker). Those paths are listed in `.gitignore`.
 
 ## What it does
 
@@ -51,9 +51,36 @@ npm run build
 npm start
 ```
 
+## Docker
+
+The image is Debian-based (`node:20-bookworm-slim`) with `ffmpeg`, `python3`, and `python3-venv`. Workflow and data paths still work like a normal install. **MLX does not run inside a Linux container**, so use **`faster-whisper`** (install it from the home page, or pre-build a `venv` under your data volume).
+
+```bash
+docker compose up --build -d
+# or: npm run docker:up
+```
+
+Open [http://localhost:3000](http://localhost:3000). Compose mounts a named volume at `/data`. To use a host folder instead:
+
+```yaml
+# docker-compose.yml — replace the volumes block with:
+    volumes:
+      - ./docker-data:/data
+```
+
+Environment:
+
+| Variable | Meaning |
+| --- | --- |
+| `TRANSYT_DATA_ROOT` | Where jobs, settings, `venv`, models, and downloaded binaries live. Default in the image is `/data`. |
+
+After the container starts, open the app and use **一键安装** if the banner still asks for Whisper or `yt-dlp`. The first precise model download is large; keep the volume on a disk with enough space.
+
+GPU note: the default setup does not pass NVIDIA devices into the container. Transcription uses CPU unless you extend the image and compose file yourself.
+
 ## One-click install
 
-After you open the app, the home page lists anything else that is missing. Click **一键安装**. It installs only what is missing, into the project `data/` folder, and leaves the system Python alone.
+After you open the app, the home page lists anything else that is missing. Click **一键安装**. It installs only what is missing under `TRANSYT_DATA_ROOT` (default `./data` on the host, `/data` in Docker), and leaves the system Python alone.
 
 ![The home page banner lists missing tools, with a one-click install button on the right](docs/setup.jpg)
 
@@ -72,7 +99,7 @@ Python packages go into a project virtual environment, so Homebrew’s PEP 668 e
 
 The log under that banner shows what is being installed. If it fails, the page keeps the error and a retry button. Typical causes are a missing or too-old Python, no network to the package index, a full disk, or a missing VC++ runtime on Windows.
 
-The first transcription also downloads a Whisper model (about 1.5GB for the precise model) into `data/models`. That happens when a job runs, not when you click the install button.
+The first transcription also downloads a Whisper model (about 1.5GB for the precise model) into `<data root>/models`. That happens when a job runs, not when you click the install button.
 
 You can still install the same tools yourself. See Install by hand at the end.
 

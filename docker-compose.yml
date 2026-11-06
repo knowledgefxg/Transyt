@@ -1,0 +1,12 @@
+services:
+  transyt:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      TRANSYT_DATA_ROOT: /data
+    volumes:
+      - transyt-data:/data
+
+volumes:
+  transyt-data:

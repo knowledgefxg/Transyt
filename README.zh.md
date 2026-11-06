@@ -4,7 +4,7 @@
 
 在自己的电脑上，把 YouTube 视频或本地视频转成带字幕的成片，并留下中英文字幕、文稿和词汇，方便对着画面学英语。
 
-转写在本机用 Whisper 完成，音频不会发到别处。翻译走你自己填写的接口。任务、视频和密钥都留在本机的 `data/` 目录。
+转写在本机用 Whisper 完成，音频不会发到别处。翻译走你自己填写的接口。任务、视频和密钥默认留在项目下的 `data/`；若设置了环境变量 `TRANSYT_DATA_ROOT`（Docker 里一般为 `/data`），则落在该目录。这些路径在 `.gitignore` 里。
 ## 能做什么
 
 - 下载 YouTube 视频，或上传本地视频（mp4、mov、mkv、webm、m4v，最大 2GB）
@@ -50,9 +50,35 @@ npm run build
 npm start
 ```
 
+## Docker
+
+镜像基于 Debian（`node:20-bookworm-slim`），镜像内已装 `ffmpeg`、`python3`、`python3-venv`。**Linux 容器里没有 MLX**，转写请用 **`faster-whisper`**（首页 **一键安装**，或提前在数据卷里准备好 `venv`）。
+
+```bash
+docker compose up --build -d
+# 或：npm run docker:up
+```
+
+浏览器打开 [http://localhost:3000](http://localhost:3000)。默认用命名卷挂载到容器内的 `/data`。若希望数据落在本机某个目录，可把 `docker-compose.yml` 里的卷改成：
+
+```yaml
+    volumes:
+      - ./docker-data:/data
+```
+
+环境变量：
+
+| 变量 | 含义 |
+| --- | --- |
+| `TRANSYT_DATA_ROOT` | 任务、设置、`venv`、模型、下载的二进制都放在这里。镜像里默认为 `/data`。 |
+
+容器起来后，若仍提示缺 Whisper 或 `yt-dlp`，在页面上点 **一键安装**。精确模型第一次下载体积大，请保证卷所在磁盘空间足够。
+
+GPU：默认 compose 未挂载 NVIDIA 设备，转写走 CPU；若要 GPU，需自行扩展镜像与 compose。
+
 ## 一键安装
 
-打开页面后，缺的工具会列在顶部。点 **一键安装**，缺什么装什么，都放进项目的 `data/`，不动系统 Python。
+打开页面后，缺的工具会列在顶部。点 **一键安装**，缺什么装什么，都放进 `TRANSYT_DATA_ROOT`（默认是项目下的 `data/`，Docker 里一般是 `/data`），不动系统 Python。
 
 ![首页顶部提示缺少工具，右侧是一键安装](docs/setup.jpg)
 
@@ -71,7 +97,7 @@ Python 包装进项目虚拟环境，不会碰到 Homebrew 的 PEP 668 报错。
 
 横幅下的日志会显示正在装什么。失败时页面保留原因和重试按钮。常见原因是没装 Python、版本太旧、连不上软件源、磁盘不够，或 Windows 缺少 VC++ 运行库。
 
-第一次转写时还会下载 Whisper 模型（精确模型大约 1.5GB），放进 `data/models`。这是跑任务时发生的，不是点安装按钮时下载。
+第一次转写时还会下载 Whisper 模型（精确模型大约 1.5GB），放进 `<数据根目录>/models`。这是跑任务时发生的，不是点安装按钮时下载。
 
 也可以自己装同样的工具，见文末「想自己装也可以」。
 

@@ -1,9 +1,10 @@
 import fs from "fs/promises";
 import path from "path";
 import type { JobRecord } from "./types";
+import { dataMount } from "./paths";
 import { youtubeVideoId } from "./youtube";
 
-const root = path.join(process.cwd(), "data", "jobs");
+const root = path.join(dataMount, "jobs");
 
 const globalState = globalThis as unknown as {
   __transyt?: { activeId: string | null; queue: { id: string; from: "start" | "translate" }[] };

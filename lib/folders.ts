@@ -1,10 +1,11 @@
 import { randomBytes } from "crypto";
 import fs from "fs/promises";
 import path from "path";
+import { dataMount } from "./paths";
 
 export type Folder = { id: string; name: string };
 
-const file = path.join(process.cwd(), "data", "folders.json");
+const file = path.join(dataMount, "folders.json");
 
 export async function listFolders(): Promise<Folder[]> {
   try {

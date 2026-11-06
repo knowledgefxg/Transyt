@@ -18,8 +18,9 @@ import {
 import { blocksFromCues } from "./reading";
 import { translateLines } from "./translate";
 import { PauseError, clearPause, isPauseRequested } from "./control";
+import { transcribeScriptPath } from "./paths";
 
-const scriptPath = path.join(process.cwd(), "scripts", "transcribe.py");
+const scriptPath = transcribeScriptPath;
 
 async function fileExists(file: string): Promise<boolean> {
   try {

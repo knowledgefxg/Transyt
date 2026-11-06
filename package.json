@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test:segment": "node --experimental-strip-types scripts/segment-check.ts"
+    "test:segment": "node --experimental-strip-types scripts/segment-check.ts",
+    "docker:build": "docker build -t transyt .",
+    "docker:up": "docker compose up --build -d"
   },
   "dependencies": {
     "next": "^15.5.4",

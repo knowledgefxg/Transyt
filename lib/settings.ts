@@ -1,8 +1,9 @@
 import fs from "fs/promises";
 import path from "path";
 import type { PublicSettings, Settings } from "./types";
+import { dataMount } from "./paths";
 
-const file = path.join(process.cwd(), "data", "settings.json");
+const file = path.join(dataMount, "settings.json");
 
 const defaults: Settings = {
   apiBase: "https://api.openai.com/v1",

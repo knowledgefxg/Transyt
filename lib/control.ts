@@ -2,6 +2,7 @@ import type { ChildProcess } from "child_process";
 import { spawnSync } from "child_process";
 import fs from "fs";
 import path from "path";
+import { dataMount } from "./paths";
 
 type ControlState = {
   processes: Map<string, ChildProcess>;
@@ -33,7 +34,7 @@ export function clearPause(id: string) {
 }
 
 function pidPath(id: string): string {
-  return path.join(process.cwd(), "data", "jobs", id, "active.pid");
+  return path.join(dataMount, "jobs", id, "active.pid");
 }
 
 export function attachProcess(id: string, child: ChildProcess) {
