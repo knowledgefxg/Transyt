@@ -26,6 +26,13 @@ type SetupState = {
   log: string[];
 };
 
+function modelDownloadPercent(detail?: string): number | null {
+  const match = detail?.match(/模型下载\s*(\d+)%/);
+  if (!match) return null;
+  const value = Number(match[1]);
+  return Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : null;
+}
+
 function displayTitle(item: JobRecord): string {
   const title = item.title.trim();
   const junk = !title || title.startsWith("http") || /strongly recommended|latest version|yt-dlp/i.test(title);
@@ -1268,6 +1275,22 @@ async function submit(event: React.FormEvent) {
                       <div>
                         <strong>{stage.label}</strong>
                         {stage.detail && <span>{stage.detail}</span>}
+                        {stage.id === "transcribe" && stage.status === "active" && (() => {
+                          const pct = modelDownloadPercent(stage.detail);
+                          if (pct === null) return null;
+                          return (
+                            <span
+                              className="meter stage-meter"
+                              role="progressbar"
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                              aria-valuenow={pct}
+                              aria-label="模型下载进度"
+                            >
+                              <span style={{ width: `${pct}%` }} />
+                            </span>
+                          );
+                        })()}
                       </div>
                     </li>
                   ))}

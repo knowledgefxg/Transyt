@@ -186,7 +186,8 @@ async function prepare(id: string) {
     (line) => {
       lastLine = line;
       const now = Date.now();
-      if (now - lastWrite > 800) {
+      const modelProgress = /模型下载\s*\d+%/.test(line);
+      if (modelProgress || now - lastWrite > 800) {
         lastWrite = now;
         void setStage(id, "transcribe", "active", line);
       }

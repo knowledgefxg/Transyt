@@ -15,10 +15,44 @@ FASTER_MODELS = {
     "precise": "large-v3-turbo",
     "fast": "medium",
 }
+FASTER_HF = {
+    "precise": "Systran/faster-whisper-large-v3-turbo",
+    "fast": "Systran/faster-whisper-medium",
+}
 
 
 def word_row(word: str, start: float, end: float) -> dict:
     return {"word": word or "", "start": float(start), "end": float(end)}
+
+
+def ensure_hf_model(repo_id: str) -> None:
+    """首次使用时从 Hugging Face 拉模型；向 stdout 打印 模型下载 N% 供页面进度条使用。"""
+    try:
+        from huggingface_hub import snapshot_download
+        from tqdm.auto import tqdm as base_tqdm
+    except ImportError:
+        print("正在加载转写模型…", flush=True)
+        return
+
+    last_pct = -1
+
+    class ModelDownloadBar(base_tqdm):
+        def update(self, n=1):
+            nonlocal last_pct
+            super().update(n)
+            total = self.total or 0
+            if total <= 0:
+                return
+            pct = min(100, int(100 * self.n / total))
+            if pct != last_pct:
+                last_pct = pct
+                print(f"模型下载 {pct}%", flush=True)
+
+    print(f"正在准备模型 {repo_id}（已缓存会很快跳过）", flush=True)
+    snapshot_download(repo_id=repo_id, tqdm_class=ModelDownloadBar)
+    if last_pct < 100:
+        print("模型下载 100%", flush=True)
+    print("模型已就绪，开始转写", flush=True)
 
 
 def write_payload(path: str, language: str, model: str, segments: list) -> None:
@@ -35,10 +69,10 @@ def transcribe_mlx(audio: str, quality: str, language: str) -> tuple[str, str, l
     import mlx_whisper
 
     repo = MLX_MODELS[quality]
+    ensure_hf_model(repo)
     kwargs = {"path_or_hf_repo": repo, "word_timestamps": True, "verbose": False}
     if language:
         kwargs["language"] = language
-    print(f"模型 {repo}", file=sys.stderr, flush=True)
     result = mlx_whisper.transcribe(audio, **kwargs)
     segments = []
     for seg in result.get("segments") or []:
@@ -62,7 +96,7 @@ def transcribe_faster(audio: str, quality: str, language: str) -> tuple[str, str
     from faster_whisper import WhisperModel
 
     name = FASTER_MODELS[quality]
-    print(f"模型 {name}", file=sys.stderr, flush=True)
+    ensure_hf_model(FASTER_HF[quality])
     model = None
     last_error = ""
     for device, compute in (("cuda", "float16"), ("cpu", "int8")):

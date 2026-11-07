@@ -427,6 +427,11 @@ input:focus, select:focus, textarea:focus { border-color: #e1a08e; }
 
 .drop.done .meter > span { background: var(--good); }
 
+.stage .stage-meter {
+  margin: 8px 0 0;
+  max-width: min(280px, 100%);
+}
+
 .choice {
   display: flex;
   flex-wrap: wrap;
